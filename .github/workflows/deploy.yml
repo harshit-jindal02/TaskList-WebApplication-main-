@@ -34,7 +34,7 @@ jobs:
               cd "$HOME/taskweb-insightAssist"
               git pull
             else
-              git clone https://github.com/harshit-jindal02/taskweb-insightAssist.git "$HOME/taskweb-insightAssist"
+              git clone https://github.com/harshit-jindal02/TaskList-WebApplication-main-.git "$HOME/taskweb-insightAssist"
               cd "$HOME/taskweb-insightAssist"
             fi
 
