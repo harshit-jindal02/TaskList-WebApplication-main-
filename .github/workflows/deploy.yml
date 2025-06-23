@@ -41,7 +41,7 @@ jobs:
             # 2) Build images inside Minikube’s Docker daemon
             eval $(minikube docker-env)
             docker build -t taskweb/backend:latest backend/Flask-ToDo-List
-            docker build -t taskweb/frontend:latest frontend/Simple-Todos-In-React-JS
+            docker build -t taskweb/frontend:latest --build-arg REACT_APP_API_URL="http://${{ secrets.ec2_host }}:5000" frontend/Simple-Todos-In-React-JS
 
             # 3) Apply manifest & restart to trigger OTel injection
             kubectl apply -f ~/traceAssist/k8s/taskweb-deploy.yaml
