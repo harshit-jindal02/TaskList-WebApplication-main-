@@ -1,8 +1,7 @@
 name: Full Deploy to EC2/Minikube
- 
+
 on:
   workflow_call:
-    # no inputs section any more
     secrets:
       ec2_user:
         description: "SSH user for EC2"
@@ -14,7 +13,7 @@ on:
         description: "SSH private key for EC2"
         required: true
   workflow_dispatch:
- 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,32 +22,37 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.ec2_ssh_key }}
- 
+
       - name: SSH & Deploy to Minikube
         run: |
           ssh -o StrictHostKeyChecking=no \
               ${{ secrets.ec2_user }}@${{ secrets.ec2_host }} << 'EOF'
             set -eux
-            # 3️⃣ Clone TaskWeb app
+
+            # 1) Clone or update TaskWeb app
             if [ -d "$HOME/taskweb-insightAssist" ]; then
               cd "$HOME/taskweb-insightAssist"
               git pull
             else
-              git clone https://github.com/harshit-jindal02/TaskList-WebApplication-main-.git "$HOME/taskweb-insightAssist"
+              git clone https://github.com/harshit-jindal02/taskweb-insightAssist.git "$HOME/taskweb-insightAssist"
               cd "$HOME/taskweb-insightAssist"
             fi
-            # 4️⃣ Build images inside Minikube’s Docker daemon
-            eval \$(minikube docker-env)
+
+            # 2) Build images inside Minikube’s Docker daemon
+            eval $(minikube docker-env)
             docker build -t taskweb/backend:latest backend/Flask-ToDo-List
             docker build -t taskweb/frontend:latest frontend/Simple-Todos-In-React-JS
-            # 5️⃣ Apply manifest & restart to trigger OTel injection
+
+            # 3) Apply manifest & restart to trigger OTel injection
             kubectl apply -f ~/traceAssist/k8s/taskweb-deploy.yaml
             kubectl rollout restart deployment backend frontend -n traceassist
-            # 6️⃣ Port-forward in background so you can curl
-            sleep 25
-            nohup kubectl port-forward --address 0.0.0.0 svc/frontend-svc -n traceassist 8080:80 &
-            nohup kubectl port-forward --address 0.0.0.0 svc/backend-svc  -n traceassist 5000:5000 &
+
+            # 4) Expose services on 0.0.0.0 and smoke-test
+            nohup kubectl port-forward --address 0.0.0.0 svc/backend-svc -n traceassist 5000:5000 >/dev/null 2>&1 &
+            nohup kubectl port-forward --address 0.0.0.0 svc/frontend-svc -n traceassist 8080:80 >/dev/null 2>&1 &
             sleep 5
-            curl http://localhost:5000/api/todos
-            curl http://localhost:8080
+            curl -f http://localhost:5000/api/todos
+            curl -f http://localhost:8080/
+
+            echo "✅ Deploy + smoke-test complete."
           EOF
